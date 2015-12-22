@@ -22,24 +22,24 @@ typedef enum LogLevel
     L_WARN,   
     L_INFO,        
     L_DEBUG,  
-	L_TRACE,
+    L_TRACE,
     L_LEVEL_MAX
 }LogLevel;
 
 typedef struct Flogconf
 {
-	/// 日志文件名
-	char file_name[NLOG_MAX_PATH];
+    /// 日志文件名
+    char file_name[NLOG_MAX_PATH];
 
-	/// 单个日志文件最大文件大小
-	size_t max_size;
+    /// 单个日志文件最大文件大小
+    size_t max_size;
 
-	/// 日志级别
-	LogLevel max_level;
+    /// 日志级别
+    LogLevel max_level;
 
-	int enable_usec;
+    int enable_usec;
 
-	int enable_pack_print;//是否打开16进制pack打印功能
+    int enable_pack_print;//是否打开16进制pack打印功能
 }Flogconf;
 
 #define DEFLOGCONF {"logtest",LOGFILE_DEFMAXSIZE,L_LEVEL_MAX,0,1}
@@ -90,15 +90,15 @@ int FLog_log_hex(unsigned char * data, size_t len, LogLevel level);
 
 /*
 usage:
-	Flogconf logconf = DEFLOGCONF;
-	if(0 > LOG_INIT(logconf)){
-		printf("log failed\n");
-		return -1;
-	}
-	int a = 100;
-	LOG_FATAL("test %d",a);
-	....
-	LOG_EXIT;
+    Flogconf logconf = DEFLOGCONF;
+    if(0 > LOG_INIT(logconf)){
+        printf("log failed\n");
+        return -1;
+    }
+    int a = 100;
+    LOG_FATAL("test %d",a);
+    ....
+    LOG_EXIT;
 */
 
 

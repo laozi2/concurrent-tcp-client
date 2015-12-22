@@ -9,12 +9,12 @@
 #include <netdb.h>         //gethostbyname
 #include <fcntl.h>    //fcntl  
 
-#include <string.h> 	//strerror()
+#include <string.h>     //strerror()
 #include <stdio.h>    //perror
 #include <netinet/tcp.h> //TCP_MAXSEG
 //#include <error.h>         //perror
 #include <errno.h>         //errno
-#include <stdlib.h> 	//exit
+#include <stdlib.h>     //exit
 
 #include <sys/epoll.h>  //linux epoll
 
@@ -50,69 +50,69 @@ typedef struct connection_config_s connection_config_t;
 typedef struct test_data_s test_data_t;
 
 struct test_data_s {
-	u_char* start;
-	u_char* end;
+    u_char* start;
+    u_char* end;
 };
 
 struct connection_config_s {
-	unsigned int requests;
-	unsigned retry:1;
-	unsigned random:1;
+    unsigned int requests;
+    unsigned retry:1;
+    unsigned random:1;
 };
 
 struct server_config_s {
-	char server_name[32];
-	char ip[16];
-	unsigned short port;
-	struct sockaddr_in server_addr;
+    char server_name[32];
+    char ip[16];
+    unsigned short port;
+    struct sockaddr_in server_addr;
     socklen_t       socklen;
-	unsigned int connection_pool_n;
-	test_data_t* test_data;
-	unsigned int test_data_n;
-	connection_config_t *con_config;
+    unsigned int connection_pool_n;
+    test_data_t* test_data;
+    unsigned int test_data_n;
+    connection_config_t *con_config;
 };
 
 struct all_config_s {
-	unsigned int connection_pool_n;
-	unsigned int server_config_n;
-	server_config_t *psc;
-	char* config_file;
+    unsigned int connection_pool_n;
+    unsigned int server_config_n;
+    server_config_t *psc;
+    char* config_file;
 };
 
 struct send_buffer_s {
-	u_char* start;
-	u_char* pos;
-	u_char* last;
+    u_char* start;
+    u_char* pos;
+    u_char* last;
 };
 
 struct read_buffer_s {
-	int read_len;
-	char head[4];
-	u_char* start;
-	u_char* end;
+    int read_len;
+    char head[4];
+    u_char* start;
+    u_char* end;
 };
 
 struct connection_s {
-	int        fd;
-	server_config_t  *conf;
-	
-	send_buffer_t   send_buf;
-	read_buffer_t   read_buf;
-	
-	int requests_con;
-	int requests_fd;
-	unsigned int pos;
-	
-	ngx_rbtree_node_t   timer;
-	
-	ngx_uint_t sleep;
-	
-	unsigned active:1;
-	unsigned ready_read:1;
-	unsigned ready_write:1;
-	unsigned retry:1;
-	unsigned timer_set:1;
-	unsigned state:3;
+    int        fd;
+    server_config_t  *conf;
+    
+    send_buffer_t   send_buf;
+    read_buffer_t   read_buf;
+    
+    int requests_con;
+    int requests_fd;
+    unsigned int pos;
+    
+    ngx_rbtree_node_t   timer;
+    
+    ngx_uint_t sleep;
+    
+    unsigned active:1;
+    unsigned ready_read:1;
+    unsigned ready_write:1;
+    unsigned retry:1;
+    unsigned timer_set:1;
+    unsigned state:3;
 };
 
 
