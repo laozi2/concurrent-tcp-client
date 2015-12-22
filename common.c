@@ -65,8 +65,8 @@ add_write_event(connection_t* c)
 static int 
 start_connect(connection_t* c)
 {
-    struct sockaddr* server_addr = (struct sockaddr*)&(c->conf->server_addr);
-    int socklen = c->conf->socklen;
+    struct sockaddr* server_addr = (struct sockaddr*)&(p_config->server_addr);
+    int socklen = p_config->socklen;
     int reuseaddr = 1;
     
     int fd = socket(PF_INET, SOCK_STREAM, 0);
@@ -108,12 +108,12 @@ failed:
 
 int start_all_connection()
 {
-    assert(p_connection_pool && p_all_config);
+    assert(p_connection_pool && p_config);
     
     int i, ret;
     
     int ok = 0;
-    for (i = 0; i < p_all_config->connection_pool_n; i++) {
+    for (i = 0; i < p_config->connection_pool_n; i++) {
         ret = start_connect(p_connection_pool + i);
         if (ret == -1) {
         
@@ -142,54 +142,42 @@ close_connection(connection_t* c)
     c->state = ST_CLOSED;
 }
 
-//need call after p_all_config
+//need call after p_config
 int create_connection_pool()
 {
-    assert(p_all_config && !p_connection_pool);
+    assert(p_config && !p_connection_pool);
     
-    unsigned int i,j,pos = 0;
+    unsigned int i;
     unsigned int connection_pool_n;
-    unsigned int server_config_n;
-    server_config_t *psc;
 
-    connection_pool_n = p_all_config->connection_pool_n;
-    server_config_n = p_all_config->server_config_n;
+    connection_pool_n = p_config->connection_pool_n;
 
     p_connection_pool = calloc(sizeof(connection_t), connection_pool_n);
     assert(p_connection_pool);
     
-    for (i = 0; i < server_config_n; i++) {
-        psc = p_all_config->psc + i;
-    
-        for (j = 0; j < psc->connection_pool_n; j++) {
-            p_connection_pool[pos].fd = -1;
-            p_connection_pool[pos].conf = psc;
-            p_connection_pool[pos].pos = pos;
-            //p_connection_pool[pos].send_buf = 
-            //p_connection_pool[pos].read_buf = 
-            p_connection_pool[pos].requests_con = psc->con_config[j].requests;
-            //p_connection_pool[pos].requests_fd = 0;
-            p_connection_pool[pos].sleep = 1000; //1s
-            //p_connection_pool[pos].active = 0;
-            //p_connection_pool[pos].ready_read = 0;
-            //p_connection_pool[pos].ready_write = 0;
-            p_connection_pool[pos].state = ST_CLOSED;
-            p_connection_pool[pos].retry = psc->con_config[j].retry;
-        
-            pos++;
-        }
+    for (i = 0; i < connection_pool_n; i++) {
+        p_connection_pool[i].fd = -1;
+        p_connection_pool[i].pos = i;
+        p_connection_pool[i].conf = &p_config->con_config[i];
+        //p_connection_pool[i].send_buf = 
+        //p_connection_pool[i].read_buf = 
+        //p_connection_pool[i].requests_fd = 0;
+        //p_connection_pool[i].active = 0;
+        //p_connection_pool[i].ready_read = 0;
+        //p_connection_pool[i].ready_write = 0;
+        p_connection_pool[i].state = ST_CLOSED;
     }
     
     //create recv buf
     p_connection_pool[0].read_buf.start = (char*)malloc(READ_BUF_MAX_LEN * connection_pool_n);
-        for (i = 1; i < connection_pool_n; i++) {
+    for (i = 1; i < connection_pool_n; i++) {
         p_connection_pool[i].read_buf.start = p_connection_pool[0].read_buf.start + i * 1024;
     }
     
     return 0;
 }
 
-//need call befor p_all_config
+//need call befor p_config
 static void 
 destroy_connection_pool()
 {
@@ -199,7 +187,7 @@ destroy_connection_pool()
         return;
     }
     
-    for (i = 0; i < p_all_config->connection_pool_n; i++) {
+    for (i = 0; i < p_config->connection_pool_n; i++) {
         if (p_connection_pool[i].fd != -1) {
             close(p_connection_pool[i].fd);
         }
@@ -230,8 +218,8 @@ handle_after_request(connection_t* c)
 {
     c->state = ST_IDLE;
 
-    if (c->sleep > 0) {
-        ngx_add_timer(c, c->sleep);
+    if (c->conf->sleep_ms > 0) {
+        ngx_add_timer(c, c->conf->sleep_ms);
         return;
     }
     //add_write_event(c);
@@ -242,9 +230,8 @@ handle_after_request(connection_t* c)
 static void 
 make_request(connection_t* c)
 {
-    server_config_t* sc = c->conf;
-    c->send_buf.start = sc->test_data[0].start;
-    c->send_buf.last = sc->test_data[0].end;
+    c->send_buf.start = p_config->test_data[0].start;
+    c->send_buf.last = p_config->test_data[0].end;
     c->send_buf.pos = c->send_buf.start;
 }
 
@@ -253,7 +240,7 @@ handle_send_event(connection_t* c)
 {
     int n;
     
-    if (c->requests_con-- == 0) {
+    if (c->conf->requests-- == 0) {
         return;
     }
     
@@ -306,7 +293,7 @@ handle_send_event(connection_t* c)
     //error
     close_connection(c);
     
-    if (c->retry) {
+    if (c->conf->retry) {
         LOG_INFO("[%u][%d]send error, retry to connect",c->pos,c->fd);
         if (start_connect(c) == -1) {
         
@@ -401,7 +388,7 @@ failed:
     //error
     close_connection(c);
     
-    if (c->retry) {
+    if (c->conf->retry) {
         LOG_WARN("[%u][%d]recv error, retry to connect",c->pos,c->fd);
         if (start_connect(c) == -1) {
         
@@ -416,7 +403,7 @@ handle_close_event(connection_t* c)
 {
     close_connection(c);
     
-    if (c->retry) {
+    if (c->conf->retry) {
         LOG_WARN("[%u][%d]handle_close_event, retry to connect",c->pos,c->fd);
         if (start_connect(c) == -1) {
         

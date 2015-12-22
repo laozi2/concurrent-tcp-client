@@ -41,7 +41,7 @@
 #define ngx_max(val1, val2)  ((val1 < val2) ? (val2) : (val1))
 #define ngx_min(val1, val2)  ((val1 > val2) ? (val2) : (val1))
 
-typedef struct server_config_s server_config_t;
+typedef struct config_s config_t;
 typedef struct all_config_s all_config_t;
 typedef struct send_buffer_s send_buffer_t;
 typedef struct read_buffer_s read_buffer_t;
@@ -56,11 +56,12 @@ struct test_data_s {
 
 struct connection_config_s {
     unsigned int requests;
+	unsigned int sleep_ms;
     unsigned retry:1;
     unsigned random:1;
 };
 
-struct server_config_s {
+struct config_s {
     char server_name[32];
     char ip[16];
     unsigned short port;
@@ -69,14 +70,8 @@ struct server_config_s {
     unsigned int connection_pool_n;
     test_data_t* test_data;
     unsigned int test_data_n;
+    connection_config_t def_con_config;
     connection_config_t *con_config;
-};
-
-struct all_config_s {
-    unsigned int connection_pool_n;
-    unsigned int server_config_n;
-    server_config_t *psc;
-    char* config_file;
 };
 
 struct send_buffer_s {
@@ -94,8 +89,9 @@ struct read_buffer_s {
 
 struct connection_s {
     int        fd;
-    server_config_t  *conf;
     
+	connection_config_t *conf;
+	
     send_buffer_t   send_buf;
     read_buffer_t   read_buf;
     
@@ -105,12 +101,12 @@ struct connection_s {
     
     ngx_rbtree_node_t   timer;
     
-    ngx_uint_t sleep;
+    //ngx_uint_t sleep;
     
     unsigned active:1;
     unsigned ready_read:1;
     unsigned ready_write:1;
-    unsigned retry:1;
+    //unsigned retry:1;
     unsigned timer_set:1;
     unsigned state:3;
 };
@@ -130,7 +126,7 @@ void clear_test_config();
 
 extern int epfd;
 extern connection_t* p_connection_pool;
-extern all_config_t* p_all_config;
+extern config_t* p_config;
 extern int stop;
 
 #endif  //_COMMON_H_
