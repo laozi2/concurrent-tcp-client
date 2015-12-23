@@ -70,7 +70,7 @@ int InitFLog(Flogconf logconf)
     strncpy(g_sFlog.file_name,logconf.file_name,NLOG_MAX_PATH);
     g_sFlog.max_size = (logconf.max_size > LOGFILE_DEFMAXSIZE)?LOGFILE_DEFMAXSIZE:logconf.max_size;
     g_sFlog.file = NULL;
-    g_sFlog.max_level = (logconf.max_level < L_LEVEL_MAX)?L_LEVEL_MAX:logconf.max_level;
+    g_sFlog.max_level = (logconf.max_level > L_LEVEL_MAX)?L_LEVEL_MAX:logconf.max_level;
     g_sFlog.enable_usec = logconf.enable_usec;
     
     if (0 > FLog_open()) {
@@ -87,7 +87,7 @@ void ExitFlog()
     FLog_close();
 }
 
-int FLog_open()
+static int FLog_open()
 {
     assert(g_sFlog.binited == 0);
     
@@ -123,7 +123,7 @@ int FLog_open()
     return 0;
 }
 
-void FLog_close()
+static void FLog_close()
 {
     if (0 == g_sFlog.binited) {
         return ;
@@ -173,7 +173,7 @@ int FLog_log_warn(const char* fmt, ...)
     return ret;
 }
 
-int  FLog_strformatreplace(char * srcstr, char * desstr)
+static int FLog_strformatreplace(char * srcstr, char * desstr)
 {
     if (NULL == srcstr || NULL == desstr) {
         return -1;
@@ -242,9 +242,9 @@ int FLog_log_debug(const char* fmt, ...)
     return ret;
 }
 
-int FLog_vlog(int level, const char * fmt, va_list ap)
+static int FLog_vlog(int level, const char * fmt, va_list ap)
 {
-    if (g_sFlog.binited == 0) {
+    if (g_sFlog.binited == 0 || level > g_sFlog.max_level) {
         return -1;
     }
 

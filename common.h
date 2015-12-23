@@ -42,7 +42,6 @@
 #define ngx_min(val1, val2)  ((val1 > val2) ? (val2) : (val1))
 
 typedef struct config_s config_t;
-typedef struct all_config_s all_config_t;
 typedef struct send_buffer_s send_buffer_t;
 typedef struct read_buffer_s read_buffer_t;
 typedef struct connection_s connection_t;
@@ -56,7 +55,8 @@ struct test_data_s {
 
 struct connection_config_s {
     unsigned int requests;
-	unsigned int sleep_ms;
+    unsigned int sleep_min;
+    unsigned int sleep_max;
     unsigned retry:1;
     unsigned random:1;
 };
@@ -68,6 +68,8 @@ struct config_s {
     struct sockaddr_in server_addr;
     socklen_t       socklen;
     unsigned int connection_pool_n;
+    unsigned int read_max_buf_len; 
+    const char* test_data_file;
     test_data_t* test_data;
     unsigned int test_data_n;
     connection_config_t def_con_config;
@@ -90,13 +92,13 @@ struct read_buffer_s {
 struct connection_s {
     int        fd;
     
-	connection_config_t *conf;
-	
+    connection_config_t *conf;
+
     send_buffer_t   send_buf;
     read_buffer_t   read_buf;
     
     int requests_con;
-    int requests_fd;
+    unsigned int test_data_index;
     unsigned int pos;
     
     ngx_rbtree_node_t   timer;

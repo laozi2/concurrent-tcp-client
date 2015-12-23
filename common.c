@@ -161,7 +161,8 @@ int create_connection_pool()
         p_connection_pool[i].conf = &p_config->con_config[i];
         //p_connection_pool[i].send_buf = 
         //p_connection_pool[i].read_buf = 
-        //p_connection_pool[i].requests_fd = 0;
+        //p_connection_pool[i].requests_con = 0;
+        //p_connection_pool[i].test_data_index = 0;
         //p_connection_pool[i].active = 0;
         //p_connection_pool[i].ready_read = 0;
         //p_connection_pool[i].ready_write = 0;
@@ -169,7 +170,7 @@ int create_connection_pool()
     }
     
     //create recv buf
-    p_connection_pool[0].read_buf.start = (char*)malloc(READ_BUF_MAX_LEN * connection_pool_n);
+    p_connection_pool[0].read_buf.start = (char*)malloc(p_config->read_max_buf_len * connection_pool_n);
     for (i = 1; i < connection_pool_n; i++) {
         p_connection_pool[i].read_buf.start = p_connection_pool[0].read_buf.start + i * 1024;
     }
@@ -217,9 +218,26 @@ static void
 handle_after_request(connection_t* c)
 {
     c->state = ST_IDLE;
+    unsigned int sleep_min, sleep_max, sleep_ms;
+    
+    if (c->conf->requests-- == 0) {
+        return;
+    }
 
-    if (c->conf->sleep_ms > 0) {
-        ngx_add_timer(c, c->conf->sleep_ms);
+    sleep_min = c->conf->sleep_min;
+
+    if (sleep_min > 0) {
+        sleep_max = c->conf->sleep_max;
+        
+        if (sleep_min == sleep_max) {
+            sleep_ms = sleep_min;
+        }
+        else {
+            sleep_ms = rand()%(sleep_max - sleep_min + 1) + sleep_min;
+        }
+        
+        LOG_DEBUG("[%u][%d]sleep %u", c->pos,c->fd,sleep_ms);
+        ngx_add_timer(c, sleep_ms);
         return;
     }
     //add_write_event(c);
@@ -230,8 +248,20 @@ handle_after_request(connection_t* c)
 static void 
 make_request(connection_t* c)
 {
-    c->send_buf.start = p_config->test_data[0].start;
-    c->send_buf.last = p_config->test_data[0].end;
+    unsigned int test_data_index;
+    if (c->conf->random) {
+        test_data_index = rand()%(p_config->test_data_n);
+    }
+    else {
+        test_data_index = c->test_data_index++;
+        if (c->test_data_index == p_config->test_data_n) {
+            c->test_data_index = 0;
+        }
+    }
+    LOG_DEBUG("[%u][%d]test_data_index %u", c->pos,c->fd,test_data_index);
+
+    c->send_buf.start = p_config->test_data[test_data_index].start;
+    c->send_buf.last = p_config->test_data[test_data_index].end;
     c->send_buf.pos = c->send_buf.start;
 }
 
@@ -239,10 +269,6 @@ void
 handle_send_event(connection_t* c)
 {
     int n;
-    
-    if (c->conf->requests-- == 0) {
-        return;
-    }
     
     if (c->state == ST_CONNECTING || c->state == ST_IDLE) {
         c->state = ST_SENDING;
@@ -293,7 +319,7 @@ handle_send_event(connection_t* c)
     //error
     close_connection(c);
     
-    if (c->conf->retry) {
+    if (c->conf->retry && c->conf->requests-- > 0) {
         LOG_INFO("[%u][%d]send error, retry to connect",c->pos,c->fd);
         if (start_connect(c) == -1) {
         
@@ -349,7 +375,7 @@ handle_read_event(connection_t* c)
             //read head ok
             if (read_len < 0) {
                 read_len = ntohl(*(uint32_t*)(c->read_buf.head));
-                if (read_len <= 4 || read_len >= READ_BUF_MAX_LEN) {
+                if (read_len <= 4 || read_len >= p_config->read_max_buf_len) {
                     LOG_WARN("[%u][%d]protocol error, head %d",c->pos,c->fd,read_len);
                     goto failed;
                 }
@@ -388,7 +414,7 @@ failed:
     //error
     close_connection(c);
     
-    if (c->conf->retry) {
+    if (c->conf->retry && c->conf->requests-- > 0) {
         LOG_WARN("[%u][%d]recv error, retry to connect",c->pos,c->fd);
         if (start_connect(c) == -1) {
         
@@ -403,7 +429,7 @@ handle_close_event(connection_t* c)
 {
     close_connection(c);
     
-    if (c->conf->retry) {
+    if (c->conf->retry && c->conf->requests-- > 0) {
         LOG_WARN("[%u][%d]handle_close_event, retry to connect",c->pos,c->fd);
         if (start_connect(c) == -1) {
         
@@ -420,11 +446,11 @@ handle_timer_event(connection_t* c)
     
     switch (state) {
     case ST_IDLE:
-        LOG_DEBUG("handle_timer_event %d",state);
+        LOG_DEBUG("[%u][%d]handle_timer_event %d",c->pos,c->fd,state);
         handle_send_event(c);
         break;
     default :
-        LOG_WARN("handle_timer_event %d",state);
+        LOG_WARN("[%u][%d]handle_timer_event %d",c->pos,c->fd,state);
         break;
     }
 }

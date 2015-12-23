@@ -18,11 +18,14 @@ int main(int argc, char* argv[])
     int i;
     ngx_msec_t  wait_time,delta;
     
-    Flogconf logconf = DEFLOGCONF;
+    //Flogconf logconf = DEFLOGCONF;
+    Flogconf logconf = {"/tmp/logtest",LOGFILE_DEFMAXSIZE,L_LEVEL_MAX,0,1};
     if (0 > LOG_INIT(logconf)) {
         printf("LOG_INIT() failed\n");
         return -1;
     }
+
+    srand((unsigned)time(NULL));
     
     //config
     if (0 != make_test_config()) {
