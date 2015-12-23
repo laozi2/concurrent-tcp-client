@@ -1,3 +1,7 @@
 make large concurrent requests on tcp socket, can be used as pressure test
 
 gcc -g -o test common.c config.c flog.c ngx_rbtree.c ngx_event_timer.c test.c
+
+高并发客户端程序
+
+采用epoll异步非阻塞，单线程实现高并发，参照nginx事件机制，加入非阻塞定时器
