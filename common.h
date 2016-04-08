@@ -22,6 +22,7 @@
 #include <signal.h>
 
 #include "ngx_rbtree.h"
+#include "zmalloc.h"
 
 #define ngx_nonblocking(s)  fcntl(s, F_SETFL, fcntl(s, F_GETFL) | O_NONBLOCK)
 #define EPOLLWAITNUM     512 

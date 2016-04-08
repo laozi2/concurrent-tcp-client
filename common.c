@@ -152,7 +152,7 @@ int create_connection_pool()
 
     connection_pool_n = p_config->connection_pool_n;
 
-    p_connection_pool = calloc(sizeof(connection_t), connection_pool_n);
+    p_connection_pool = zcalloc(sizeof(connection_t) * connection_pool_n);
     assert(p_connection_pool);
     
     for (i = 0; i < connection_pool_n; i++) {
@@ -170,7 +170,7 @@ int create_connection_pool()
     }
     
     //create recv buf
-    p_connection_pool[0].read_buf.start = (char*)malloc(p_config->read_max_buf_len * connection_pool_n);
+    p_connection_pool[0].read_buf.start = (char*)zmalloc(p_config->read_max_buf_len * connection_pool_n);
     for (i = 1; i < connection_pool_n; i++) {
         p_connection_pool[i].read_buf.start = p_connection_pool[0].read_buf.start + i * 1024;
     }
@@ -194,8 +194,8 @@ destroy_connection_pool()
         }
     }
     
-    free(p_connection_pool[0].read_buf.start);
-    free(p_connection_pool);
+    zfree(p_connection_pool[0].read_buf.start);
+    zfree(p_connection_pool);
     p_connection_pool = NULL;
 }
 
@@ -221,6 +221,7 @@ handle_after_request(connection_t* c)
     unsigned int sleep_min, sleep_max, sleep_ms;
     
     if (c->conf->requests-- == 0) {
+        close_connection(c);
         return;
     }
 
@@ -299,7 +300,7 @@ handle_send_event(connection_t* c)
         c->state = ST_RECVING;
         c->read_buf.read_len = -4;
         return;
-        }
+    }
     
     if (n == 0) {
         c->ready_write = 0;

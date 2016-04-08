@@ -12,7 +12,7 @@ static int load_test_data();
 static const char* server_name = "server1";  //optional, default $ip:$port
 static const char* ip = "127.0.0.1";
 static unsigned short port = 6666;
-static unsigned int connection_pool_n = 10; //optional, default 1
+static unsigned int connection_pool_n = 1000; //optional, default 1
 static unsigned int requests = 10;  //optional, default 1
 static unsigned int sleep_min = 10; //optional, default 0
 static unsigned int sleep_max = 1000;  //optional, default 0, >=sleep_min
@@ -63,7 +63,7 @@ make_test_config()
 	p_config->def_con_config.random = is_random;
 	p_config->def_con_config.requests = requests;
 	
-	p_config->con_config = calloc(sizeof(connection_config_t), p_config->connection_pool_n);
+	p_config->con_config = zcalloc(sizeof(connection_config_t) * p_config->connection_pool_n);
 	for (i = 0; i < p_config->connection_pool_n; i++) {
 		p_config->con_config[i].retry = p_config->def_con_config.retry;
 		p_config->con_config[i].sleep_min = p_config->def_con_config.sleep_min;
@@ -90,17 +90,17 @@ clear_test_config()
 	}
 	
 	if (p_config->con_config) {
-		free(p_config->con_config);
+		zfree(p_config->con_config);
 	}
 	
 	if (p_config->test_data) {
 		for (i = 0; i < p_config->test_data_n; i++) {
 			if (p_config->test_data[i].start) {
-				free(p_config->test_data[i].start);
+				zfree(p_config->test_data[i].start);
 			}
 		}
 		
-		free(p_config->test_data);
+		zfree(p_config->test_data);
 	}
 	
 	p_config = NULL;
@@ -110,18 +110,18 @@ clear_test_config()
 static void 
 make_tmp_test_data()
 {	
-	static const char* send_str = "/user/login2?user=Zmojianliang@163%2Ecom&password=d2dc0e04e5ee1740&client=Android-SM-A7000&client_id=4Q9DQ9Nge9WQ6DE1CFAf6bUd&client_app=CamScanner_AD_1_LITE@3%2E9%2E1%2E20151020_Market_360&type=email";
+	static const char* send_str = "FAf6bUd&cli%2E9%2E1%2E201510mail";
 	int send_len = strlen(send_str) + 4;
 	//if (send_len > READ_BUF_MAX_LEN) {
 		assert(send_len <= READ_BUF_MAX_LEN);
 	//}
 	
 	p_config->test_data_n = 1;
-	p_config->test_data = calloc(sizeof(test_data_t), p_config->test_data_n);
+	p_config->test_data = zcalloc(sizeof(test_data_t) * p_config->test_data_n);
 	
 	uint32_t n_net = htonl(send_len);
   
-	p_config->test_data[0].start = malloc(send_len);
+	p_config->test_data[0].start = zmalloc(send_len);
 	memcpy(p_config->test_data[0].start, &n_net, 4);
 	memcpy(p_config->test_data[0].start + 4, send_str, send_len - 4);
 	p_config->test_data[0].end = p_config->test_data[0].start + send_len;
@@ -158,7 +158,7 @@ load_test_data()
 	LOG_DEBUG("array test data %d",totoal_len);
 	
 	p_config->test_data_n = totoal_len;
-	p_config->test_data = calloc(sizeof(test_data_t), p_config->test_data_n);
+	p_config->test_data = zcalloc(sizeof(test_data_t) * p_config->test_data_n);
 	
 	for (i = 0; i < p_config->test_data_n; i++) {
 		n = fread(buf, 1, 4, fp);
@@ -176,7 +176,7 @@ load_test_data()
 		}
 		
 		n_net = htonl(totoal_len);
-		p_config->test_data[i].start = malloc(totoal_len);
+		p_config->test_data[i].start = zmalloc(totoal_len);
 		memcpy(p_config->test_data[i].start, &n_net, 4);
 		p_config->test_data[i].end = p_config->test_data[i].start + totoal_len;
 		

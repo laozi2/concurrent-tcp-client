@@ -1,7 +1,24 @@
+
 make large concurrent requests on tcp socket, can be used as pressure test
 
-gcc -g -o test common.c config.c flog.c ngx_rbtree.c ngx_event_timer.c test.c
+install:
+不使用 jemalloc库
+gcc -g -o test common.c config.c flog.c ngx_rbtree.c ngx_event_timer.c zmalloc.c test.c
+
+使用 jemalloc库
+1. 安装jemalloc库,以redis编译jemalloc为例 
+	1.1 wget http://www.canonware.com/download/jemalloc/jemalloc-3.6.0.tar.bz2 下载到当前目录
+	1.2 tar xf jemalloc-3.6.0.tar.bz2 ; cd jemalloc
+	1.3 ./configure --with-jemalloc-prefix=je_ --enable-cc-silence CFLAGS="-std=gnu99 -Wall -pipe -g3 -O3 -funroll-loops " LDFLAGS=""
+	1.4 make CFLAGS="-std=gnu99 -Wall -pipe -g3 -O3 -funroll-loops " LDFLAGS="" lib/libjemalloc.a
+2. gcc -DUSE_JEMALLOC -I./jemalloc/include/ -g -o test common.c config.c flog.c ngx_rbtree.c ngx_event_timer.c zmalloc.c test.c jemalloc/lib/libjemalloc.a -ldl -lpthread -lrt
 
 高并发客户端程序
 
 采用epoll异步非阻塞，单线程实现高并发，参照nginx事件机制，加入非阻塞定时器
+
+注意:
+    1. 为了读写方便，只处理 4字节头+body 的请求响应协议，复杂协议需要根据特定需求实现。
+    2. 请求的测试数据预先生成并载入内存,以提高效率。
+    3. 不做逻辑验证，既不处理返回值内容, 更不能做单元测试。
+    4. 该程序功能简单高效，稍做修改可直接使用，也可做代码参考，二次开发。
